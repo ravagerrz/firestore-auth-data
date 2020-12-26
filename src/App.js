@@ -1,5 +1,7 @@
 import React ,{Component} from 'react'
+import "./App.css"
 import firebase, {db} from "./components/firebase"
+import StyledFirebaseAuth from "react-firebaseui/StyledFirebaseAuth"
 
 
 
@@ -10,27 +12,45 @@ class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      inputField: '',
-      data: null
+      inputdata: '',
+      data: null,
+      isSignedIn: false
     };
+  }
+  uiConfig = {
+    signInFlow: "popup",
+    
+    signInOptions: [
+      firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+      ],
+    
+    callbacks: {
+      signInSuccess: () => false
+    }
+  }
+  componentDidMount = () => { 
+    firebase.auth().onAuthStateChanged(user => {
+      this.setState({ isSignedIn: !!user })
+      console.log("user", user)
+    })
   }
    
   
 
   onInputChange = (e) => {
-    const inputField = e.target.value;
-    this.setState(() => ({ inputField }));
+    const inputdata = e.target.value;
+    this.setState(() => ({ inputdata }));
   }
 
   /* Adding Data */
   onSubmit = (e) => {
     e.preventDefault();
-    console.log(this.state.inputField);
+    console.log(this.state.inputdata);
 
     db.collection('demo')
-    .doc('pi2qOv9AgzX72soh05FfU74kULr2')
+    .doc(firebase.auth().currentUser.uid)
     .set({
-      note: this.state.inputField
+      note: this.state.inputdata
     })
     .then((docRef) => {
       console.log("Doc written with ID: ", firebase.auth().currentUser.uid)
@@ -41,8 +61,8 @@ class App extends Component {
   }
 
   /* Retrieving Data */
-  onLoad = (e) => {
-    const docRef = db.collection('demo').doc('pi2qOv9AgzX72soh05FfU74kULr2');
+  readdata = (e) => {
+    const docRef = db.collection('demo').doc(firebase.auth().currentUser.uid);
          
          docRef.get()
         .then((doc) => {
@@ -50,6 +70,7 @@ class App extends Component {
             let data = doc.data();
           
             this.setState({ data: data.note });
+            this.forceUpdate()
       
             console.log("Document data:", data);
             console.log("Document data:", data.note)
@@ -70,32 +91,44 @@ class App extends Component {
   
 render() {
 
-  let dataUI = this.state.data ? <h1>No Data</h1> : <pre>{JSON.stringify(this.state.data)}</pre>;
+  let datauser = this.state.data ? <h1>{this.state.data}</h1> : <h1>No data</h1>;
 
   
   return (
-      <div className="App">
-          <h1>Raul: </h1>
-
-          <div>
-              <h1>UI Data</h1>
-              
-              {dataUI}
-              
-              
-          </div>
-
-                  
-
-          <form onSubmit={this.onSubmit}>
+      <div classname ="App">
+        
+        {this.state.isSignedIn ? (
+          <span>
+            <div>You are successfully signed in</div>
+            
+            <button onClick={() => firebase.auth().signOut()}>Sign out!</button>
+            <h1>Hello {firebase.auth().currentUser.displayName}</h1>
+            <h1>Welcome to notes</h1>
+            <p>Your note:{datauser}</p>
+             <form onSubmit={this.onSubmit}>
+               <div><p>Note :
               <input
                   type="text"
-                  value={this.state.inputField}
+                  value={this.state.inputdata}
                   onChange={this.onInputChange}
               />
-              <button>Save</button>
+              </p>
+              </div>
+              <button>Save data</button>
+              
           </form>
-          <button onClick={this.onLoad}>Load Data</button>
+          <button onClick={this.readdata}>  Load Data</button>
+          
+            
+          </span>
+        ) : (
+          <StyledFirebaseAuth
+            uiConfig={this.uiConfig}
+            firebaseAuth={firebase.auth()}
+          />
+        )}
+      
+          
       </div>
 
   );
